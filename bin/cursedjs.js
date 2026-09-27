@@ -15,9 +15,10 @@ Usage:
 
 Options:
   -o, --output <file>       Write output to a file (default: stdout)
-  -l, --level <level>       0 | 1 | 2 | 3 | 4 | cursed | abomination
+  -l, --level <level>       0 | 1 | 2 | 3 | 4 | cursed | abomination | eldritch
       --brainfuck           Alias for --level abomination
-      --abomination         Maximum CursedJS AST damage
+      --abomination         Maximum classic AST damage
+      --eldritch            JS coercion / character-mining mode
       --seed <number>       Deterministic obfuscator seed (default: 0)
       --stats               Print size/readability damage report to stderr
       --verify              Execute original + cursed code and compare results
@@ -27,6 +28,7 @@ Examples:
   cursedjs app.js -o app.cursed.js
   cursedjs app.js --level cursed --stats
   cursedjs app.js --brainfuck --verify -o regret.js
+  cursedjs app.js --eldritch --stats -o forbidden.js
   cat app.js | cursedjs - --level 3
 `.trim();
 }
@@ -58,6 +60,8 @@ function parseArgs(argv) {
       }
     } else if (arg === "--brainfuck" || arg === "--abomination") {
       out.level = "abomination";
+    } else if (arg === "--eldritch") {
+      out.level = "eldritch";
     } else if (arg === "--seed") {
       const raw = argv[++i];
       if (raw === undefined || !Number.isFinite(Number(raw))) {
@@ -136,6 +140,12 @@ async function verifyEquivalent(original, cursed, inputPath) {
   }
 }
 
+function readability(level) {
+  if (level === "eldritch") return "language privileges revoked";
+  if (level === "abomination") return "beyond recovery";
+  return "legally deceased";
+}
+
 function printStats(stats) {
   const pct = stats.inputBytes === 0
     ? "n/a"
@@ -157,9 +167,17 @@ function printStats(stats) {
     );
   }
 
-  console.error(
-    `  readability  ${stats.level === "abomination" ? "beyond recovery" : "legally deceased"}`
-  );
+  if (stats.eldritchCrimes) {
+    console.error(
+      `  glyph mining ${stats.eldritchCrimes.minedCharacters}/` +
+      `${stats.eldritchCrimes.characters} chars mined from coercion`
+    );
+    console.error(
+      `  fallbacks    ${stats.eldritchCrimes.codePointFallbacks} String.fromCodePoint calls`
+    );
+  }
+
+  console.error(`  readability  ${readability(stats.level)}`);
 }
 
 async function main() {
