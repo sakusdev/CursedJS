@@ -238,8 +238,15 @@ export async function curse(source, options = {}) {
     code = await oneLine(code);
   }
 
-  const inputBytes = Buffer.byteLength(source);
-  const outputBytes = Buffer.byteLength(code);
+  const byteLength = (value) => {
+    if (typeof Buffer !== "undefined") {
+      return Buffer.byteLength(value);
+    }
+    return new TextEncoder().encode(value).byteLength;
+  };
+
+  const inputBytes = byteLength(source);
+  const outputBytes = byteLength(code);
 
   return {
     code,
