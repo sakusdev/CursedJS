@@ -11,7 +11,9 @@
   },
   "scripts": {
     "test": "node --test",
-    "curse": "node ./bin/cursedjs.js"
+    "curse": "node ./bin/cursedjs.js",
+    "web:dev": "vite --config web/vite.config.js",
+    "web:build": "vite build --config web/vite.config.js"
   },
   "keywords": [
     "javascript",
@@ -32,5 +34,8 @@
     "@babel/types": "^7.28.0",
     "javascript-obfuscator": "^4.1.1",
     "terser": "^5.44.0"
+  },
+  "devDependencies": {
+    "vite": "^7.1.7"
   }
 }
