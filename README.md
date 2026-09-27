@@ -42,6 +42,7 @@ cursedjs input.js -o output.js --level 3
 cursedjs input.js -o output.js --level 4
 cursedjs input.js -o output.js --level cursed
 cursedjs input.js -o output.js --level abomination
+cursedjs input.js -o output.js --level eldritch
 ```
 
 | Level | Crime |
@@ -52,21 +53,88 @@ cursedjs input.js -o output.js --level abomination
 | `3` | String arrays + split strings |
 | `4` | Control-flow flattening + dead-code injection |
 | `cursed` | Readability is no longer a project goal |
-| `abomination` | Custom AST crimes, then everything above |
+| `abomination` | Custom AST crimes, then aggressive obfuscation |
+| `eldritch` | Rebuild strings from JavaScript coercion and character mining |
+
+## Eldritch mode
+
+`eldritch` is CursedJS's JSFuck-inspired mode.
+
+It does **not** output the Brainfuck language and it is not a strict JSFuck implementation. Instead, it abuses JavaScript coercion as a character source.
+
+For example:
+
+```js
+![] + []
+```
+
+evaluates to:
+
+```text
+false
+```
+
+so CursedJS can mine characters from that result:
+
+```js
+(![] + [])[+[]]
+```
+
+produces:
+
+```text
+f
+```
+
+CursedJS also mines characters from coercion-generated strings such as:
+
+```text
+false
+true
+undefined
+NaN
+[object Object]
+```
+
+and stitches those characters back together into your original strings.
+
+Characters that cannot be mined are reconstructed with deliberately cursed numeric expressions passed to `String.fromCodePoint(...)`. That means Japanese text and emoji still survive the transformation.
+
+```bash
+cursedjs app.js --eldritch --stats -o forbidden.js
+```
+
+Pipeline:
+
+```text
+JavaScript
+   ↓
+AST crimes
+   ↓
+"hello"
+   ↓
+character mining
+   ├─ coercion source available → (![]+[])[...]
+   └─ otherwise → String.fromCodePoint(cursed-number)
+   ↓
+identifier + control-flow obfuscation
+   ↓
+ONE LINE
+   ↓
+forbidden knowledge
+```
 
 ## Abomination mode
 
-This is where CursedJS stops being just an obfuscator configuration.
-
 Before the normal obfuscation pipeline, CursedJS parses your program into an AST and deliberately rewrites harmless-looking syntax into worse JavaScript.
 
-For example, a number such as:
+For example:
 
 ```js
 42
 ```
 
-is structurally rewritten toward expressions built from JavaScript coercion and bit shifts:
+is structurally rewritten toward expressions built from coercion and bit shifts:
 
 ```js
 (+!![] << (+!![] + +!![] + +!![] + +!![] + +!![])) +
@@ -86,13 +154,7 @@ becomes:
 object["property"]
 ```
 
-before the property string itself is fed into the rest of the destruction pipeline.
-
-Boolean literals become array/coercion expressions, multi-character strings are split into concatenation trees, numeric literals are decomposed, and ordinary member access becomes computed access.
-
-Then `javascript-obfuscator` gets the remains.
-
-### Maximum regret shortcut
+### Maximum classic regret shortcut
 
 ```bash
 cursedjs app.js --abomination -o app.cursed.js
@@ -104,24 +166,26 @@ For the bit:
 cursedjs app.js --brainfuck -o app.cursed.js
 ```
 
-`--brainfuck` is intentionally just an alias for `abomination`; CursedJS still emits JavaScript, not the Brainfuck language.
+`--brainfuck` remains an alias for `abomination`.
 
 ## Damage report
 
 ```bash
-cursedjs app.js --abomination --stats -o app.cursed.js
+cursedjs app.js --eldritch --stats -o app.cursed.js
 ```
 
-Abomination mode also reports how many AST nodes were harmed:
+Example:
 
 ```text
 CursedJS damage report
-  level        abomination
+  level        eldritch
   input        1240 bytes / 48 line(s)
-  output       28193 bytes / 1 line(s)
-  size ratio   2273.6%
+  output       43812 bytes / 1 line(s)
+  size ratio   3533.2%
   AST crimes   19 numbers, 4 booleans, 12 strings, 31 properties
-  readability  beyond recovery
+  glyph mining 74/103 chars mined from coercion
+  fallbacks    29 String.fromCodePoint calls
+  readability  language privileges revoked
 ```
 
 Yes, "compression" can make the file dramatically larger. That's part of the joke.
@@ -129,7 +193,7 @@ Yes, "compression" can make the file dramatically larger. That's part of the jok
 ## Differential-ish verification
 
 ```bash
-cursedjs app.js --abomination --verify -o app.cursed.js
+cursedjs app.js --eldritch --verify -o app.cursed.js
 ```
 
 This executes the original program and the transformed program and compares exit status, stdout, and stderr.
@@ -139,7 +203,7 @@ This executes the original program and the transformed program and compares exit
 ## stdin
 
 ```bash
-echo 'console.log("help")' | cursedjs - --brainfuck
+echo 'console.log("help")' | cursedjs - --eldritch
 ```
 
 ## Programmatic API
@@ -148,7 +212,7 @@ echo 'console.log("help")' | cursedjs - --brainfuck
 import { curse } from "@sakusdev/cursedjs";
 
 const result = await curse(`console.log("hello", 42)`, {
-  level: "abomination",
+  level: "eldritch",
   seed: 1337
 });
 
@@ -156,22 +220,16 @@ console.log(result.code);
 console.log(result.stats);
 ```
 
-The programmatic API also accepts `level: "brainfuck"` as an alias.
-
 ## Design
 
 ```text
 JavaScript
    ↓
-CursedJS AST crimes        (abomination)
+CursedJS AST crimes
    ↓
-numeric decomposition
-string splitting
-boolean coercion
-computed property access
+optional coercion glyph mining       (eldritch)
    ↓
 identifier mangling
-string arrays
 control-flow flattening
 dead-code injection
    ↓
@@ -180,7 +238,7 @@ one-line printer
 regret
 ```
 
-CursedJS uses Babel for its custom AST pass, then Terser and javascript-obfuscator for the rest of the pipeline.
+CursedJS uses Babel for its custom AST passes, then Terser and javascript-obfuscator for the rest of the pipeline.
 
 ## Non-goals
 
