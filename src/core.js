@@ -2,6 +2,7 @@ import { minify } from "terser";
 import { commitAstCrimes } from "./ast-crimes.js";
 import { commitEldritchCrimes } from "./eldritch.js";
 import { commitApocalypseCrimes } from "./apocalypse.js";
+import { commitSingularityCrimes, singularitySeed } from "./singularity.js";
 
 const CANONICAL_LEVELS = [
   "0",
@@ -12,7 +13,8 @@ const CANONICAL_LEVELS = [
   "cursed",
   "abomination",
   "eldritch",
-  "apocalypse"
+  "apocalypse",
+  "singularity"
 ];
 
 const VALID_LEVELS = new Set([...CANONICAL_LEVELS, "brainfuck"]);
@@ -76,7 +78,7 @@ function obfuscatorOptions(level, seed) {
     };
   }
 
-  if (level === "apocalypse") {
+  if (level === "apocalypse" || level === "singularity") {
     return {
       ...base,
       simplify: false,
@@ -185,6 +187,22 @@ function byteLength(value) {
   return new TextEncoder().encode(value).byteLength;
 }
 
+function randomSalt() {
+  const bytes = new Uint8Array(16);
+
+  if (globalThis.crypto?.getRandomValues) {
+    globalThis.crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i += 1) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+  }
+
+  return [...bytes]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export async function curseWithObfuscator(
   JavaScriptObfuscator,
   source,
@@ -201,16 +219,30 @@ export async function curseWithObfuscator(
   const requestedLevel = String(options.level ?? "cursed").toLowerCase();
   if (!VALID_LEVELS.has(requestedLevel)) {
     throw new RangeError(
-      `Unknown level "${requestedLevel}". Expected one of: 0, 1, 2, 3, 4, cursed, abomination, eldritch, apocalypse (brainfuck alias).`
+      `Unknown level "${requestedLevel}". Expected one of: 0, 1, 2, 3, 4, cursed, abomination, eldritch, apocalypse, singularity (brainfuck alias).`
     );
   }
 
   const level = normalizeLevel(requestedLevel);
   const seed = Number.isFinite(Number(options.seed)) ? Number(options.seed) : 0;
+  const buildSalt = level === "singularity"
+    ? (
+        options.salt === undefined ||
+        options.salt === null ||
+        String(options.salt).toLowerCase() === "random"
+          ? randomSalt()
+          : String(options.salt)
+      )
+    : null;
+  const effectiveSeed = level === "singularity"
+    ? ((singularitySeed(buildSalt) ^ (seed >>> 0)) >>> 0)
+    : seed;
+
   let code;
   let astCrimes = null;
   let eldritchCrimes = null;
   let apocalypseCrimes = null;
+  let singularityCrimes = null;
 
   if (level === "0") {
     code = await oneLine(source);
@@ -219,10 +251,19 @@ export async function curseWithObfuscator(
   } else {
     let sacrificialSource = source;
 
+    if (level === "singularity") {
+      const salted = commitSingularityCrimes(sacrificialSource, {
+        salt: buildSalt
+      });
+      sacrificialSource = salted.code;
+      singularityCrimes = salted.stats;
+    }
+
     if (
       level === "abomination" ||
       level === "eldritch" ||
-      level === "apocalypse"
+      level === "apocalypse" ||
+      level === "singularity"
     ) {
       const committed = commitAstCrimes(sacrificialSource);
       sacrificialSource = committed.code;
@@ -235,14 +276,14 @@ export async function curseWithObfuscator(
       eldritchCrimes = encoded.stats;
     }
 
-    if (level === "apocalypse") {
+    if (level === "apocalypse" || level === "singularity") {
       const encoded = commitApocalypseCrimes(sacrificialSource);
       sacrificialSource = encoded.code;
       apocalypseCrimes = encoded.stats;
     }
 
     code = JavaScriptObfuscator
-      .obfuscate(sacrificialSource, obfuscatorOptions(level, seed))
+      .obfuscate(sacrificialSource, obfuscatorOptions(level, effectiveSeed))
       .getObfuscatedCode();
 
     code = await oneLine(code);
@@ -263,7 +304,8 @@ export async function curseWithObfuscator(
       outputLines: code === "" ? 0 : 1,
       astCrimes,
       eldritchCrimes,
-      apocalypseCrimes
+      apocalypseCrimes,
+      singularityCrimes
     }
   };
 }
