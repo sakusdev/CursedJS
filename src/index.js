@@ -1,8 +1,19 @@
 import JavaScriptObfuscator from "javascript-obfuscator";
 import { minify } from "terser";
 import { commitAstCrimes } from "./ast-crimes.js";
+import { commitEldritchCrimes } from "./eldritch.js";
 
-const CANONICAL_LEVELS = ["0", "1", "2", "3", "4", "cursed", "abomination"];
+const CANONICAL_LEVELS = [
+  "0",
+  "1",
+  "2",
+  "3",
+  "4",
+  "cursed",
+  "abomination",
+  "eldritch"
+];
+
 const VALID_LEVELS = new Set([...CANONICAL_LEVELS, "brainfuck"]);
 
 function normalizeLevel(level) {
@@ -65,6 +76,22 @@ function obfuscatorOptions(level, seed) {
       stringArrayShuffle: true,
       stringArrayThreshold: 0.9,
       transformObjectKeys: true
+    };
+  }
+
+  if (level === "eldritch") {
+    return {
+      ...base,
+      simplify: false,
+      controlFlowFlattening: true,
+      controlFlowFlatteningThreshold: 0.8,
+      deadCodeInjection: true,
+      deadCodeInjectionThreshold: 0.15,
+      numbersToExpressions: false,
+      splitStrings: false,
+      stringArray: false,
+      transformObjectKeys: false,
+      unicodeEscapeSequence: false
     };
   }
 
@@ -148,7 +175,7 @@ export async function curse(source, options = {}) {
   const requestedLevel = String(options.level ?? "cursed").toLowerCase();
   if (!VALID_LEVELS.has(requestedLevel)) {
     throw new RangeError(
-      `Unknown level "${requestedLevel}". Expected one of: 0, 1, 2, 3, 4, cursed, abomination (brainfuck alias).`
+      `Unknown level "${requestedLevel}". Expected one of: 0, 1, 2, 3, 4, cursed, abomination, eldritch (brainfuck alias).`
     );
   }
 
@@ -156,6 +183,7 @@ export async function curse(source, options = {}) {
   const seed = Number.isFinite(Number(options.seed)) ? Number(options.seed) : 0;
   let code;
   let astCrimes = null;
+  let eldritchCrimes = null;
 
   if (level === "0") {
     code = await oneLine(source);
@@ -164,18 +192,22 @@ export async function curse(source, options = {}) {
   } else {
     let sacrificialSource = source;
 
-    if (level === "abomination") {
-      const committed = commitAstCrimes(source);
+    if (level === "abomination" || level === "eldritch") {
+      const committed = commitAstCrimes(sacrificialSource);
       sacrificialSource = committed.code;
       astCrimes = committed.stats;
+    }
+
+    if (level === "eldritch") {
+      const encoded = commitEldritchCrimes(sacrificialSource);
+      sacrificialSource = encoded.code;
+      eldritchCrimes = encoded.stats;
     }
 
     code = JavaScriptObfuscator
       .obfuscate(sacrificialSource, obfuscatorOptions(level, seed))
       .getObfuscatedCode();
 
-    // Obfuscation is already compact. This final pass exists for one sacred rule:
-    // there can be only one line.
     code = await oneLine(code);
   }
 
@@ -192,7 +224,8 @@ export async function curse(source, options = {}) {
       ratio: inputBytes === 0 ? 0 : outputBytes / inputBytes,
       inputLines: source === "" ? 0 : source.split(/\r?\n/).length,
       outputLines: code === "" ? 0 : 1,
-      astCrimes
+      astCrimes,
+      eldritchCrimes
     }
   };
 }
