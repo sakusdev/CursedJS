@@ -15,7 +15,9 @@ Usage:
 
 Options:
   -o, --output <file>       Write output to a file (default: stdout)
-  -l, --level <level>       0 | 1 | 2 | 3 | 4 | cursed (default: cursed)
+  -l, --level <level>       0 | 1 | 2 | 3 | 4 | cursed | abomination
+      --brainfuck           Alias for --level abomination
+      --abomination         Maximum CursedJS AST damage
       --seed <number>       Deterministic obfuscator seed (default: 0)
       --stats               Print size/readability damage report to stderr
       --verify              Execute original + cursed code and compare results
@@ -24,6 +26,7 @@ Options:
 Examples:
   cursedjs app.js -o app.cursed.js
   cursedjs app.js --level cursed --stats
+  cursedjs app.js --brainfuck --verify -o regret.js
   cat app.js | cursedjs - --level 3
 `.trim();
 }
@@ -48,10 +51,13 @@ function parseArgs(argv) {
       out.output = argv[++i];
       if (!out.output) throw new Error(`${arg} requires a file path`);
     } else if (arg === "-l" || arg === "--level") {
-      out.level = String(argv[++i] ?? "").toLowerCase();
+      const raw = String(argv[++i] ?? "").toLowerCase();
+      out.level = raw === "brainfuck" ? "abomination" : raw;
       if (!levels.includes(out.level)) {
-        throw new Error(`Invalid level "${out.level}"`);
+        throw new Error(`Invalid level "${raw}"`);
       }
+    } else if (arg === "--brainfuck" || arg === "--abomination") {
+      out.level = "abomination";
     } else if (arg === "--seed") {
       const raw = argv[++i];
       if (raw === undefined || !Number.isFinite(Number(raw))) {
@@ -141,7 +147,19 @@ function printStats(stats) {
   console.error(`  input        ${stats.inputBytes} bytes / ${stats.inputLines} line(s)`);
   console.error(`  output       ${stats.outputBytes} bytes / ${stats.outputLines} line(s)`);
   console.error(`  size ratio   ${pct}`);
-  console.error("  readability  legally deceased");
+
+  if (stats.astCrimes) {
+    console.error(
+      `  AST crimes   ${stats.astCrimes.numbers} numbers, ` +
+      `${stats.astCrimes.booleans} booleans, ` +
+      `${stats.astCrimes.strings} strings, ` +
+      `${stats.astCrimes.properties} properties`
+    );
+  }
+
+  console.error(
+    `  readability  ${stats.level === "abomination" ? "beyond recovery" : "legally deceased"}`
+  );
 }
 
 async function main() {
