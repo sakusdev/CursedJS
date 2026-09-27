@@ -15,10 +15,11 @@ Usage:
 
 Options:
   -o, --output <file>       Write output to a file (default: stdout)
-  -l, --level <level>       0 | 1 | 2 | 3 | 4 | cursed | abomination | eldritch
+  -l, --level <level>       0 | 1 | 2 | 3 | 4 | cursed | abomination | eldritch | apocalypse
       --brainfuck           Alias for --level abomination
       --abomination         Maximum classic AST damage
       --eldritch            JS coercion / character-mining mode
+      --apocalypse          No String.fromCodePoint. Bootstrap escape/unescape from JS itself
       --seed <number>       Deterministic obfuscator seed (default: 0)
       --stats               Print size/readability damage report to stderr
       --verify              Execute original + cursed code and compare results
@@ -26,9 +27,9 @@ Options:
 
 Examples:
   cursedjs app.js -o app.cursed.js
-  cursedjs app.js --level cursed --stats
   cursedjs app.js --brainfuck --verify -o regret.js
   cursedjs app.js --eldritch --stats -o forbidden.js
+  cursedjs app.js --apocalypse --stats --verify -o aftermath.js
   cat app.js | cursedjs - --level 3
 `.trim();
 }
@@ -62,6 +63,8 @@ function parseArgs(argv) {
       out.level = "abomination";
     } else if (arg === "--eldritch") {
       out.level = "eldritch";
+    } else if (arg === "--apocalypse") {
+      out.level = "apocalypse";
     } else if (arg === "--seed") {
       const raw = argv[++i];
       if (raw === undefined || !Number.isFinite(Number(raw))) {
@@ -141,6 +144,7 @@ async function verifyEquivalent(original, cursed, inputPath) {
 }
 
 function readability(level) {
+  if (level === "apocalypse") return "civilization ended";
   if (level === "eldritch") return "language privileges revoked";
   if (level === "abomination") return "beyond recovery";
   return "legally deceased";
@@ -175,6 +179,21 @@ function printStats(stats) {
     console.error(
       `  fallbacks    ${stats.eldritchCrimes.codePointFallbacks} String.fromCodePoint calls`
     );
+  }
+
+  if (stats.apocalypseCrimes) {
+    console.error(
+      `  glyph mining ${stats.apocalypseCrimes.minedCharacters}/` +
+      `${stats.apocalypseCrimes.characters} chars mined`
+    );
+    console.error(
+      `  native mine  ${stats.apocalypseCrimes.nativeMinedCharacters} chars from native-function text`
+    );
+    console.error(
+      `  escapes      ${stats.apocalypseCrimes.escapedCharacters} chars / ` +
+      `${stats.apocalypseCrimes.unicodeCodeUnits} UTF-16 units`
+    );
+    console.error("  fromCodePoint 0 (banned)");
   }
 
   console.error(`  readability  ${readability(stats.level)}`);
