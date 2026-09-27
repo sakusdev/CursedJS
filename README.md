@@ -43,6 +43,7 @@ cursedjs input.js -o output.js --level 4
 cursedjs input.js -o output.js --level cursed
 cursedjs input.js -o output.js --level abomination
 cursedjs input.js -o output.js --level eldritch
+cursedjs input.js -o output.js --level apocalypse
 ```
 
 | Level | Crime |
@@ -54,39 +55,119 @@ cursedjs input.js -o output.js --level eldritch
 | `4` | Control-flow flattening + dead-code injection |
 | `cursed` | Readability is no longer a project goal |
 | `abomination` | Custom AST crimes, then aggressive obfuscation |
-| `eldritch` | Rebuild strings from JavaScript coercion and character mining |
+| `eldritch` | Rebuild strings from coercion + `String.fromCodePoint` fallback |
+| `apocalypse` | Ban `String.fromCodePoint`; bootstrap missing glyphs from JavaScript itself |
+
+## Apocalypse mode
+
+`apocalypse` is the current maximum-regret mode.
+
+```bash
+cursedjs app.js --apocalypse --stats --verify -o aftermath.js
+```
+
+Unlike `eldritch`, it **does not use `String.fromCodePoint`**.
+
+It begins with boring JavaScript coercions:
+
+```js
+![] + []        // "false"
+!![] + []       // "true"
+[][[]] + []     // "undefined"
++{} + []        // "NaN"
+{} + []         // "[object Object]" in expression context
+```
+
+Those strings provide most of the bootstrap alphabet.
+
+There is one especially annoying problem: the letter **`p`** is missing.
+
+So CursedJS commits a more serious offense.
+
+A RegExp constructor stringifies to native-function text:
+
+```text
+function RegExp() { [native code] }
+```
+
+which contains a `p`.
+
+Once `p` exists, CursedJS can build the words:
+
+```text
+escape
+unescape
+```
+
+without writing those words as source string literals.
+
+Then it obtains the legacy global functions through a dynamically constructed `Function`, mines `%` from `escape(" ")`, and reconstructs arbitrary UTF-16 code units as generated `%uXXXX` sequences.
+
+Conceptually:
+
+```text
+JavaScript
+   ↓
+AST crimes
+   ↓
+false / true / undefined / NaN / [object Object]
+   ↓
+bootstrap alphabet
+   ↓
+RegExp native-function text
+   ↓
+mine the missing "p"
+   ↓
+construct "return escape" / "return unescape"
+   ↓
+mine "%"
+   ↓
+build %uXXXX without source string literals
+   ↓
+unescape(...)
+   ↓
+arbitrary Unicode
+   ↓
+ONE LINE
+   ↓
+civilization ended
+```
+
+Even:
+
+```js
+console.log("Hello, 世界 🌎");
+```
+
+survives the transformation.
+
+### Damage report
+
+```text
+CursedJS damage report
+  level        apocalypse
+  input        ...
+  output       ... / 1 line(s)
+  size ratio   ...
+  AST crimes   ...
+  glyph mining ...
+  native mine  ...
+  escapes      ...
+  fromCodePoint 0 (banned)
+  readability  civilization ended
+```
+
+### Portability note
+
+`apocalypse` deliberately abuses legacy `escape` / `unescape` globals and native-function stringification. It is tested in CI on Node.js 20 and Node.js 22.
+
+This mode is a joke compiler experiment, not a compatibility strategy.
 
 ## Eldritch mode
 
-`eldritch` is CursedJS's JSFuck-inspired mode.
+`eldritch` is the less apocalyptic JSFuck-inspired mode.
 
-It does **not** output the Brainfuck language and it is not a strict JSFuck implementation. Instead, it abuses JavaScript coercion as a character source.
-
-For example:
-
-```js
-![] + []
-```
-
-evaluates to:
-
-```text
-false
-```
-
-so CursedJS can mine characters from that result:
-
-```js
-(![] + [])[+[]]
-```
-
-produces:
-
-```text
-f
-```
-
-CursedJS also mines characters from coercion-generated strings such as:
+It mines characters from:
 
 ```text
 false
@@ -96,32 +177,10 @@ NaN
 [object Object]
 ```
 
-and stitches those characters back together into your original strings.
-
-Characters that cannot be mined are reconstructed with deliberately cursed numeric expressions passed to `String.fromCodePoint(...)`. That means Japanese text and emoji still survive the transformation.
+and uses deliberately cursed `String.fromCodePoint(...)` expressions when a character cannot be mined.
 
 ```bash
 cursedjs app.js --eldritch --stats -o forbidden.js
-```
-
-Pipeline:
-
-```text
-JavaScript
-   ↓
-AST crimes
-   ↓
-"hello"
-   ↓
-character mining
-   ├─ coercion source available → (![]+[])[...]
-   └─ otherwise → String.fromCodePoint(cursed-number)
-   ↓
-identifier + control-flow obfuscation
-   ↓
-ONE LINE
-   ↓
-forbidden knowledge
 ```
 
 ## Abomination mode
@@ -168,32 +227,10 @@ cursedjs app.js --brainfuck -o app.cursed.js
 
 `--brainfuck` remains an alias for `abomination`.
 
-## Damage report
-
-```bash
-cursedjs app.js --eldritch --stats -o app.cursed.js
-```
-
-Example:
-
-```text
-CursedJS damage report
-  level        eldritch
-  input        1240 bytes / 48 line(s)
-  output       43812 bytes / 1 line(s)
-  size ratio   3533.2%
-  AST crimes   19 numbers, 4 booleans, 12 strings, 31 properties
-  glyph mining 74/103 chars mined from coercion
-  fallbacks    29 String.fromCodePoint calls
-  readability  language privileges revoked
-```
-
-Yes, "compression" can make the file dramatically larger. That's part of the joke.
-
 ## Differential-ish verification
 
 ```bash
-cursedjs app.js --eldritch --verify -o app.cursed.js
+cursedjs app.js --apocalypse --verify -o app.cursed.js
 ```
 
 This executes the original program and the transformed program and compares exit status, stdout, and stderr.
@@ -203,7 +240,7 @@ This executes the original program and the transformed program and compares exit
 ## stdin
 
 ```bash
-echo 'console.log("help")' | cursedjs - --eldritch
+echo 'console.log("help")' | cursedjs - --apocalypse
 ```
 
 ## Programmatic API
@@ -212,7 +249,7 @@ echo 'console.log("help")' | cursedjs - --eldritch
 import { curse } from "@sakusdev/cursedjs";
 
 const result = await curse(`console.log("hello", 42)`, {
-  level: "eldritch",
+  level: "apocalypse",
   seed: 1337
 });
 
@@ -227,11 +264,13 @@ JavaScript
    ↓
 CursedJS AST crimes
    ↓
-optional coercion glyph mining       (eldritch)
+coercion glyph mining
    ↓
-identifier mangling
-control-flow flattening
-dead-code injection
+native-function glyph mining        (apocalypse)
+   ↓
+UTF-16 escape reconstruction        (apocalypse)
+   ↓
+identifier mangling / obfuscation
    ↓
 one-line printer
    ↓
@@ -239,6 +278,8 @@ regret
 ```
 
 CursedJS uses Babel for its custom AST passes, then Terser and javascript-obfuscator for the rest of the pipeline.
+
+See [docs/APOCALYPSE.md](docs/APOCALYPSE.md) for the v0.4 bootstrap chain.
 
 ## Non-goals
 
