@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="CursedJS technical demo — turn valid JavaScript into one-line regret."
+    />
+    <meta name="theme-color" content="#09090b" />
+    <title>CursedJS — Technically valid JavaScript.</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <a class="brand" href="#top" aria-label="CursedJS home">
+          <span class="brand-mark">C/</span>
+          <span>CursedJS</span>
+        </a>
+        <nav class="nav" aria-label="Main navigation">
+          <a href="#internals">Internals</a>
+          <a href="#playground">Playground</a>
+          <a href="#source">Source</a>
+          <a
+            class="github-link"
+            href="https://github.com/sakusdev/CursedJS"
+            target="_blank"
+            rel="noreferrer"
+          >GitHub ↗</a>
+        </nav>
+      </header>
+
+      <main id="top">
+        <section class="hero section">
+          <div class="hero-copy">
+            <div class="eyebrow">
+              <span class="status-dot"></span>
+              CursedJS v0.4 · apocalypse online
+            </div>
+            <h1>
+              Technically valid<br />
+              <span>JavaScript.</span>
+            </h1>
+            <p class="hero-lead">
+              A deliberately unreasonable JavaScript transformer that turns readable
+              programs into one-line, coercion-heavy, AST-mutated regret — while trying
+              to preserve behavior.
+            </p>
+            <div class="hero-actions">
+              <a class="button primary" href="#playground">Ruin some JavaScript</a>
+              <a class="button ghost" href="#internals">See how it works</a>
+            </div>
+          </div>
+
+          <div class="hero-terminal" aria-label="CursedJS terminal example">
+            <div class="terminal-bar">
+              <div class="terminal-dots"><i></i><i></i><i></i></div>
+              <span>aftermath.js</span>
+              <span class="terminal-state">1 line</span>
+            </div>
+            <pre><code><span class="dim">$</span> cursedjs app.js --apocalypse --stats
+
+<span class="hot">CursedJS damage report</span>
+  level          apocalypse
+  input          148 bytes / 7 line(s)
+  output         28,401 bytes / 1 line(s)
+  size ratio     19,189.9%
+  glyph mining   coercion + native text
+  fromCodePoint  <span class="ok">0 (banned)</span>
+  readability    <span class="bad">civilization ended</span></code></pre>
+          </div>
+        </section>
+
+        <section class="ticker" aria-label="Project properties">
+          <span>ONE LINE</span><b>+</b>
+          <span>AST CRIMES</span><b>+</b>
+          <span>GLYPH MINING</span><b>+</b>
+          <span>UNICODE SURVIVES</span><b>+</b>
+          <span>GOOD LIFE CHOICES: 0</span>
+        </section>
+
+        <section class="section" id="internals">
+          <div class="section-heading">
+            <span class="kicker">01 / INTERNALS</span>
+            <h2>How far can JavaScript<br />abuse itself?</h2>
+            <p>
+              CursedJS progressively rewrites syntax, values and strings. Each mode adds
+              another layer of structural damage.
+            </p>
+          </div>
+
+          <div class="mode-grid">
+            <article class="mode-card">
+              <span class="mode-index">01</span>
+              <h3>cursed</h3>
+              <p>Minification, mangling, string arrays, control-flow flattening and dead code.</p>
+              <code>readability = "legally deceased"</code>
+            </article>
+            <article class="mode-card">
+              <span class="mode-index">02</span>
+              <h3>abomination</h3>
+              <p>Custom Babel AST rewrites attack numbers, booleans, strings and property access first.</p>
+              <code>42 → (+!![]&lt;&lt;...)+...</code>
+            </article>
+            <article class="mode-card">
+              <span class="mode-index">03</span>
+              <h3>eldritch</h3>
+              <p>Characters are mined from JavaScript coercion strings; missing glyphs use a cursed fallback.</p>
+              <code>(![]+[])[+[]] → "f"</code>
+            </article>
+            <article class="mode-card featured">
+              <span class="mode-index">04</span>
+              <div class="mode-label">CURRENT MAXIMUM REGRET</div>
+              <h3>apocalypse</h3>
+              <p>No <code>String.fromCodePoint</code>. Missing characters bootstrap through native-function text and generated UTF-16 escapes.</p>
+              <code>readability = "civilization ended"</code>
+            </article>
+          </div>
+
+          <div class="pipeline-panel">
+            <div class="pipeline-title">
+              <span>APOCALYPSE BOOTSTRAP CHAIN</span>
+              <small>actual implementation concept</small>
+            </div>
+            <div class="pipeline">
+              <div class="pipeline-node">
+                <small>COERCION</small>
+                <strong>false / true / undefined</strong>
+                <code>![] + []</code>
+              </div>
+              <span class="arrow">→</span>
+              <div class="pipeline-node">
+                <small>MISSING GLYPH</small>
+                <strong>Need the letter “p”</strong>
+                <code>bootstrap alphabet incomplete</code>
+              </div>
+              <span class="arrow">→</span>
+              <div class="pipeline-node hot-node">
+                <small>NATIVE TEXT</small>
+                <strong>RegExp gives us p</strong>
+                <code>function RegExp() { [native code] }</code>
+              </div>
+              <span class="arrow">→</span>
+              <div class="pipeline-node">
+                <small>FUNCTION</small>
+                <strong>Build escape / unescape</strong>
+                <code>[]["filter"]["constructor"](...)</code>
+              </div>
+              <span class="arrow">→</span>
+              <div class="pipeline-node">
+                <small>UNICODE</small>
+                <strong>Generate %uXXXX</strong>
+                <code>世界 🌎 survives</code>
+              </div>
+            </div>
+          </div>
+
+          <div class="explainer-grid">
+            <article>
+              <span class="mini-title">01 — Mine a letter</span>
+              <pre><code>![] + []
+// "false"
+
+(![] + [])[+[]]
+// "f"</code></pre>
+            </article>
+            <article>
+              <span class="mini-title">02 — Destroy a number</span>
+              <pre><code>42
+
+// becomes expressions built from
++!![]
+&lt;&lt;
++</code></pre>
+            </article>
+            <article>
+              <span class="mini-title">03 — Keep Unicode alive</span>
+              <pre><code>"世"
+// conceptual runtime reconstruction:
+%u4e16
+→ unescape(...)
+→ "世"</code></pre>
+            </article>
+          </div>
+        </section>
+
+        <section class="section playground-section" id="playground">
+          <div class="section-heading">
+            <span class="kicker">02 / PLAYGROUND</span>
+            <h2>Commit AST crimes<br />in your browser.</h2>
+            <p>
+              This uses the real CursedJS core bundled into the page. Program execution
+              happens in a disposable Web Worker with a timeout.
+            </p>
+          </div>
+
+          <div class="playground">
+            <div class="play-toolbar">
+              <div class="mode-picker" role="group" aria-label="Transformation mode">
+                <button data-mode="cursed">cursed</button>
+                <button data-mode="abomination">abomination</button>
+                <button data-mode="eldritch">eldritch</button>
+                <button class="active" data-mode="apocalypse">apocalypse</button>
+              </div>
+              <div class="toolbar-right">
+                <label class="seed-label">seed <input id="seed" type="number" value="1337" /></label>
+                <button class="button primary small" id="transform">CURSE IT</button>
+              </div>
+            </div>
+
+            <div class="editor-grid">
+              <section class="editor-pane">
+                <div class="pane-head">
+                  <span>INPUT.JS</span>
+                  <div class="presets">
+                    <button data-preset="hello">hello</button>
+                    <button data-preset="unicode">unicode</button>
+                    <button data-preset="objects">objects</button>
+                  </div>
+                </div>
+                <textarea id="input" spellcheck="false" aria-label="Input JavaScript"></textarea>
+                <div class="pane-foot">
+                  <span id="input-meta">0 B · 0 lines</span>
+                  <button id="run-original">Run original</button>
+                </div>
+              </section>
+
+              <section class="editor-pane output-pane">
+                <div class="pane-head">
+                  <span>AFTERMATH.JS</span>
+                  <span class="processing" id="transform-state">ready</span>
+                </div>
+                <textarea id="output" spellcheck="false" readonly aria-label="Transformed JavaScript"></textarea>
+                <div class="pane-foot">
+                  <span id="output-meta">—</span>
+                  <div>
+                    <button id="copy-output">Copy</button>
+                    <button id="run-output">Run cursed</button>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div class="damage-grid" id="damage-grid">
+              <div><span>LEVEL</span><strong id="stat-level">—</strong></div>
+              <div><span>SIZE RATIO</span><strong id="stat-ratio">—</strong></div>
+              <div><span>AST CRIMES</span><strong id="stat-ast">—</strong></div>
+              <div><span>GLYPHS</span><strong id="stat-glyphs">—</strong></div>
+            </div>
+
+            <div class="console">
+              <div class="console-head">
+                <span>CONSOLE</span>
+                <button id="clear-console">clear</button>
+              </div>
+              <pre id="console-output"><span class="console-muted">Run a sample to see stdout.</span></pre>
+            </div>
+          </div>
+        </section>
+
+        <section class="section source-section" id="source">
+          <div class="section-heading">
+            <span class="kicker">03 / SOURCE</span>
+            <h2>No magic.<br />Just terrible decisions.</h2>
+            <p>
+              These are the actual source files bundled from this repository, not
+              hand-written excerpts for the demo.
+            </p>
+          </div>
+
+          <div class="source-viewer">
+            <div class="source-tabs" role="tablist">
+              <button class="active" data-source="apocalypse">src/apocalypse.js</button>
+              <button data-source="core">src/index.js</button>
+              <button data-source="ast">src/ast-crimes.js</button>
+              <button data-source="eldritch">src/eldritch.js</button>
+            </div>
+            <div class="source-meta">
+              <span id="source-lines">— lines</span>
+              <span>actual repository source</span>
+            </div>
+            <pre class="source-code"><code id="source-code"></code></pre>
+          </div>
+        </section>
+
+        <section class="final-cta section">
+          <span class="kicker">END OF LINE</span>
+          <h2>Readable JavaScript went in.<br />Something else came out.</h2>
+          <a
+            class="button primary"
+            href="https://github.com/sakusdev/CursedJS"
+            target="_blank"
+            rel="noreferrer"
+          >View CursedJS on GitHub ↗</a>
+        </section>
+      </main>
+
+      <footer>
+        <span>CursedJS · MIT</span>
+        <span>Why? <strong>No.</strong></span>
+      </footer>
+    </div>
+
+    <script type="module" src="/web/src/main.js"></script>
+  </body>
+</html>
