@@ -1,0 +1,31 @@
+{
+  "name": "@sakusdev/cursedjs",
+  "version": "0.1.0",
+  "description": "Turn valid JavaScript into technically-valid regret.",
+  "type": "module",
+  "bin": {
+    "cursedjs": "./bin/cursedjs.js"
+  },
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "curse": "node ./bin/cursedjs.js"
+  },
+  "keywords": [
+    "javascript",
+    "obfuscator",
+    "minifier",
+    "oneliner",
+    "cursed"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "javascript-obfuscator": "^4.1.1",
+    "terser": "^5.44.0"
+  }
+}
