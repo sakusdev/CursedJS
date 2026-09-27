@@ -2,6 +2,7 @@ import JavaScriptObfuscator from "javascript-obfuscator";
 import { minify } from "terser";
 import { commitAstCrimes } from "./ast-crimes.js";
 import { commitEldritchCrimes } from "./eldritch.js";
+import { commitApocalypseCrimes } from "./apocalypse.js";
 
 const CANONICAL_LEVELS = [
   "0",
@@ -11,7 +12,8 @@ const CANONICAL_LEVELS = [
   "4",
   "cursed",
   "abomination",
-  "eldritch"
+  "eldritch",
+  "apocalypse"
 ];
 
 const VALID_LEVELS = new Set([...CANONICAL_LEVELS, "brainfuck"]);
@@ -76,6 +78,20 @@ function obfuscatorOptions(level, seed) {
       stringArrayShuffle: true,
       stringArrayThreshold: 0.9,
       transformObjectKeys: true
+    };
+  }
+
+  if (level === "apocalypse") {
+    return {
+      ...base,
+      simplify: false,
+      controlFlowFlattening: false,
+      deadCodeInjection: false,
+      numbersToExpressions: false,
+      splitStrings: false,
+      stringArray: false,
+      transformObjectKeys: false,
+      unicodeEscapeSequence: false
     };
   }
 
@@ -175,7 +191,7 @@ export async function curse(source, options = {}) {
   const requestedLevel = String(options.level ?? "cursed").toLowerCase();
   if (!VALID_LEVELS.has(requestedLevel)) {
     throw new RangeError(
-      `Unknown level "${requestedLevel}". Expected one of: 0, 1, 2, 3, 4, cursed, abomination, eldritch (brainfuck alias).`
+      `Unknown level "${requestedLevel}". Expected one of: 0, 1, 2, 3, 4, cursed, abomination, eldritch, apocalypse (brainfuck alias).`
     );
   }
 
@@ -184,6 +200,7 @@ export async function curse(source, options = {}) {
   let code;
   let astCrimes = null;
   let eldritchCrimes = null;
+  let apocalypseCrimes = null;
 
   if (level === "0") {
     code = await oneLine(source);
@@ -192,7 +209,11 @@ export async function curse(source, options = {}) {
   } else {
     let sacrificialSource = source;
 
-    if (level === "abomination" || level === "eldritch") {
+    if (
+      level === "abomination" ||
+      level === "eldritch" ||
+      level === "apocalypse"
+    ) {
       const committed = commitAstCrimes(sacrificialSource);
       sacrificialSource = committed.code;
       astCrimes = committed.stats;
@@ -202,6 +223,12 @@ export async function curse(source, options = {}) {
       const encoded = commitEldritchCrimes(sacrificialSource);
       sacrificialSource = encoded.code;
       eldritchCrimes = encoded.stats;
+    }
+
+    if (level === "apocalypse") {
+      const encoded = commitApocalypseCrimes(sacrificialSource);
+      sacrificialSource = encoded.code;
+      apocalypseCrimes = encoded.stats;
     }
 
     code = JavaScriptObfuscator
@@ -225,7 +252,8 @@ export async function curse(source, options = {}) {
       inputLines: source === "" ? 0 : source.split(/\r?\n/).length,
       outputLines: code === "" ? 0 : 1,
       astCrimes,
-      eldritchCrimes
+      eldritchCrimes,
+      apocalypseCrimes
     }
   };
 }
