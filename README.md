@@ -44,6 +44,7 @@ cursedjs input.js -o output.js --level cursed
 cursedjs input.js -o output.js --level abomination
 cursedjs input.js -o output.js --level eldritch
 cursedjs input.js -o output.js --level apocalypse
+cursedjs input.js -o output.js --level singularity
 ```
 
 | Level | Crime |
@@ -57,6 +58,56 @@ cursedjs input.js -o output.js --level apocalypse
 | `abomination` | Custom AST crimes, then aggressive obfuscation |
 | `eldritch` | Rebuild strings from coercion + `String.fromCodePoint` fallback |
 | `apocalypse` | Ban `String.fromCodePoint`; bootstrap missing glyphs from JavaScript itself |
+| `singularity` | Apocalypse + salted non-deterministic structure; same source can produce different builds |
+
+## Singularity mode
+
+`singularity` is CursedJS v0.5's salted build mode.
+
+It does **not** make executable JavaScript cryptographically irreversible. Instead, it deliberately discards reproducibility information and uses a build salt to change the shape of the generated program.
+
+```bash
+cursedjs app.js --singularity --salt random --stats -o event-horizon.js
+```
+
+The salt drives:
+
+- a deterministic PRNG used for harmless opaque AST noise
+- placement and form of those expressions
+- the downstream obfuscator seed
+- the final one-line shape of the build
+
+A random salt is generated with 128 bits when available through `crypto.getRandomValues`. The raw random salt is not embedded in output stats; only an 8-hex-digit fingerprint is reported.
+
+For a reproducible build, provide your own salt:
+
+```bash
+cursedjs app.js --singularity --salt release-2026-09-27 -o event-horizon.js
+```
+
+Same source + same salt + same seed produces the same output. Change the salt and the output shape changes while program behavior should remain equivalent.
+
+Conceptually:
+
+```text
+source
+  ↓
+128-bit random salt
+  ↓
+salted PRNG
+  ├─ opaque AST noise
+  └─ obfuscator seed
+  ↓
+AST crimes
+  ↓
+apocalypse glyph reconstruction
+  ↓
+one-line output
+  ↓
+discard raw random salt
+```
+
+Identifier names, comments and some structural information that were removed during transformation cannot be recovered from the generated file alone. Runtime-required behavior, however, is still observable and therefore this is **obfuscation, not encryption**.
 
 ## Apocalypse mode
 
