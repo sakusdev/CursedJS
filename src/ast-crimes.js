@@ -1,6 +1,6 @@
 import { parse } from "@babel/parser";
 import traverseModule from "@babel/traverse";
-import generateModule from "@babel/generator";
+import { generate } from "@babel/generator";
 import * as t from "@babel/types";
 
 const traverse = traverseModule.default ?? traverseModule;
