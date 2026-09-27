@@ -1,22 +1,20 @@
 import { defineConfig } from "vite";
 import { fileURLToPath, URL } from "node:url";
 
+const webRoot = fileURLToPath(new URL("./", import.meta.url));
 const repoRoot = fileURLToPath(new URL("../", import.meta.url));
 
 export default defineConfig({
-  root: repoRoot,
+  root: webRoot,
   base: "./",
   server: {
-    open: "/web/",
+    open: "/",
     fs: {
       allow: [repoRoot]
     }
   },
   build: {
-    outDir: "dist-web",
-    emptyOutDir: true,
-    rollupOptions: {
-      input: fileURLToPath(new URL("./index.html", import.meta.url))
-    }
+    outDir: fileURLToPath(new URL("../dist-web", import.meta.url)),
+    emptyOutDir: true
   }
 });
