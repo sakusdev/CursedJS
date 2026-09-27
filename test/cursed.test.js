@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { curse, levels } from "../src/index.js";
 import { commitAstCrimes } from "../src/ast-crimes.js";
 import { commitEldritchCrimes, eldritchAlphabet } from "../src/eldritch.js";
+import { commitApocalypseCrimes, apocalypseAlphabet } from "../src/apocalypse.js";
 
 function execute(code) {
   return spawnSync(process.execPath, ["-e", code], {
@@ -21,7 +22,8 @@ test("exports all canonical curse levels", () => {
     "4",
     "cursed",
     "abomination",
-    "eldritch"
+    "eldritch",
+    "apocalypse"
   ]);
 });
 
@@ -168,4 +170,77 @@ test("eldritch mode is executable, one-line, and visibly coercion-heavy", async 
     code.includes("!![]") ||
     code.includes("fromCodePoint")
   );
+});
+
+test("apocalypse alphabet bootstraps p from native RegExp text", () => {
+  const alphabet = apocalypseAlphabet();
+
+  assert.ok(alphabet.includes("p"));
+  assert.ok(alphabet.includes(" "));
+  assert.ok(alphabet.includes("O"));
+});
+
+test("apocalypse encoder reconstructs arbitrary Unicode without fromCodePoint", () => {
+  const source = `
+    console.log("false true undefined NaN object");
+    console.log("Hello, 世界 🌎");
+    console.log("p%\\n");
+    console.log("");
+  `;
+
+  const transformed = commitApocalypseCrimes(source);
+  const before = execute(source);
+  const after = execute(transformed.code);
+
+  assert.equal(after.status, 0);
+  assert.equal(after.stdout, before.stdout);
+  assert.equal(transformed.code.includes("String.fromCodePoint"), false);
+  assert.equal(transformed.code.includes("fromCodePoint"), false);
+  assert.equal(transformed.code.includes('"Hello, 世界 🌎"'), false);
+  assert.ok(transformed.code.includes("/(?:)/"));
+  assert.ok(transformed.stats.minedCharacters > 0);
+  assert.ok(transformed.stats.nativeMinedCharacters > 0);
+  assert.ok(transformed.stats.escapedCharacters > 0);
+  assert.ok(transformed.stats.unicodeCodeUnits > 0);
+  assert.ok(transformed.stats.percentMines > 0);
+  assert.ok(transformed.stats.emptyStrings > 0);
+});
+
+test("apocalypse converts quoted object keys into computed cursed keys", () => {
+  const source = `
+    const x = { "hello": 42 };
+    console.log(x["hello"]);
+  `;
+
+  const transformed = commitApocalypseCrimes(source);
+  const result = execute(transformed.code);
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout, "42\n");
+  assert.ok(transformed.stats.computedKeys > 0);
+  assert.equal(transformed.code.includes('"hello"'), false);
+});
+
+test("apocalypse mode survives the full one-line pipeline", async () => {
+  const source = `
+    const answer = 42;
+    const data = { value: "hello" };
+    console.log(data.value, answer, true, "世界 🌎");
+  `;
+
+  const { code, stats } = await curse(source, {
+    level: "apocalypse",
+    seed: 666
+  });
+  const result = execute(code);
+
+  assert.equal(code.includes("\n"), false);
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout, "hello 42 true 世界 🌎\n");
+  assert.equal(stats.level, "apocalypse");
+  assert.ok(stats.astCrimes);
+  assert.ok(stats.apocalypseCrimes);
+  assert.ok(stats.apocalypseCrimes.characters > 0);
+  assert.ok(stats.apocalypseCrimes.escapedCharacters > 0);
+  assert.equal(code.includes("fromCodePoint"), false);
 });
