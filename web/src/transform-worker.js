@@ -32,7 +32,7 @@ self.addEventListener("message", async (event) => {
     return;
   }
 
-  const { id, source, level, seed } = data;
+  const { id, source, level, seed, salt } = data;
 
   if (!ready) {
     self.postMessage({
@@ -45,7 +45,7 @@ self.addEventListener("message", async (event) => {
 
   try {
     const startedAt = performance.now();
-    const result = await curseBrowser(source, { level, seed });
+    const result = await curseBrowser(source, { level, seed, salt });
     self.postMessage({
       id,
       ok: true,
