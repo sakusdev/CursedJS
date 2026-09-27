@@ -62,9 +62,9 @@ function saltedNoise(random) {
   return t.expressionStatement(t.unaryExpression("void", expression, true));
 }
 
-function insertNoise(container, random, stats, density) {
+function insertNoise(container, random, stats, density, force = false) {
   if (!Array.isArray(container.body) || container.body.length === 0) return;
-  if (random() > density) return;
+  if (!force && random() > density) return;
 
   const count = randomInt(random, 1, 3);
   const nodes = Array.from({ length: count }, () => saltedNoise(random));
@@ -102,7 +102,7 @@ export function commitSingularityCrimes(source, options = {}) {
     density
   };
 
-  insertNoise(ast.program, random, stats, density);
+  insertNoise(ast.program, random, stats, density, true);
 
   traverse(ast, {
     BlockStatement(path) {
