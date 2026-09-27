@@ -4,7 +4,7 @@ import { generate } from "@babel/generator";
 import * as t from "@babel/types";
 
 const traverse = traverseModule.default ?? traverseModule;
-const generate = generateModule.default ?? generateModule;
+
 
 function one() {
   return t.unaryExpression(
