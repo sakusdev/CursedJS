@@ -4,6 +4,7 @@ import apocalypseSource from "../../src/apocalypse.js?raw";
 import coreSource from "../../src/index.js?raw";
 import astSource from "../../src/ast-crimes.js?raw";
 import eldritchSource from "../../src/eldritch.js?raw";
+import singularitySource from "../../src/singularity.js?raw";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -11,6 +12,7 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 const input = $("#input");
 const output = $("#output");
 const seed = $("#seed");
+const salt = $("#salt");
 const transformButton = $("#transform");
 const transformState = $("#transform-state");
 const consoleOutput = $("#console-output");
@@ -19,7 +21,8 @@ const sources = {
   apocalypse: apocalypseSource,
   core: coreSource,
   ast: astSource,
-  eldritch: eldritchSource
+  eldritch: eldritchSource,
+  singularity: singularitySource
 };
 
 const presets = {
@@ -126,6 +129,7 @@ function createTransformWorker() {
 }
 
 function timeoutForMode(level) {
+  if (level === "singularity") return 60000;
   if (level === "apocalypse") return 45000;
   if (level === "eldritch") return 30000;
   if (level === "abomination") return 22000;
@@ -165,6 +169,14 @@ function updateStats(stats) {
 
   $("#output-meta").textContent =
     `${formatBytes(stats.outputBytes)} · ${stats.outputLines} line`;
+
+  if (stats.singularityCrimes) {
+    writeConsole(
+      "system",
+      `singularity salt fingerprint: ${stats.singularityCrimes.saltFingerprint}; ` +
+      `${stats.singularityCrimes.noiseExpressions} salted noise expressions`
+    );
+  }
 }
 
 async function transform() {
@@ -228,7 +240,10 @@ async function transform() {
     id,
     source: input.value,
     level: currentMode,
-    seed: Number(seed.value) || 0
+    seed: Number(seed.value) || 0,
+    salt: currentMode === "singularity"
+      ? (salt.value.trim() || "random")
+      : undefined
   });
 }
 
