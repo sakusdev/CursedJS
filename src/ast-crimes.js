@@ -1,9 +1,9 @@
 import { parse } from "@babel/parser";
-import traverseModule from "@babel/traverse";
+import traverse from "@babel/traverse";
 import { generate } from "@babel/generator";
 import * as t from "@babel/types";
 
-const traverse = traverseModule.default ?? traverseModule;
+
 
 
 function one() {
