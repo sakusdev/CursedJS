@@ -1,7 +1,8 @@
-let curseBrowser = null;
+import { curseBrowser } from "./browser-core.js";
+
 let ready = false;
 
-async function initialize(obfuscatorUrl) {
+function initialize(obfuscatorUrl) {
   if (ready) return;
 
   importScripts(obfuscatorUrl);
@@ -12,8 +13,6 @@ async function initialize(obfuscatorUrl) {
     );
   }
 
-  const module = await import("./browser-core.js");
-  curseBrowser = module.curseBrowser;
   ready = true;
   self.postMessage({ type: "ready" });
 }
@@ -23,7 +22,7 @@ self.addEventListener("message", async (event) => {
 
   if (data.type === "init") {
     try {
-      await initialize(data.obfuscatorUrl);
+      initialize(data.obfuscatorUrl);
     } catch (error) {
       self.postMessage({
         type: "init-error",
@@ -35,7 +34,7 @@ self.addEventListener("message", async (event) => {
 
   const { id, source, level, seed } = data;
 
-  if (!ready || !curseBrowser) {
+  if (!ready) {
     self.postMessage({
       id,
       ok: false,
