@@ -47,7 +47,11 @@ console.log(config.enabled);`
 
 let mode = "apocalypse";
 let transformWorker = null;
+let transformWorkerReady = false;
+let transformWorkerReadyPromise = null;
+let resolveTransformWorkerReady = null;
 let transformSequence = 0;
+let transformTimeout = null;
 let lastStats = null;
 
 function byteLength(value) {
@@ -78,12 +82,40 @@ function setMode(nextMode) {
   transformState.textContent = "ready";
 }
 
-function resetTransformWorker() {
+function createTransformWorker() {
   transformWorker?.terminate();
+  transformWorkerReady = false;
+  transformWorkerReadyPromise = new Promise((resolve) => {
+    resolveTransformWorkerReady = resolve;
+  });
+
   transformWorker = new Worker(
     new URL("./transform-worker.js", import.meta.url),
     { type: "module" }
   );
+
+  transformWorker.addEventListener("message", (event) => {
+    if (event.data?.type === "ready") {
+      transformWorkerReady = true;
+      resolveTransformWorkerReady?.();
+      resolveTransformWorkerReady = null;
+      if (transformState.textContent === "warming engine") {
+        transformState.textContent = "ready";
+      }
+    }
+  });
+
+  transformWorker.addEventListener("error", (event) => {
+    transformWorkerReady = false;
+    writeConsole("error", event.message || "Transformer worker failed to load.");
+  });
+}
+
+function timeoutForMode(level) {
+  if (level === "apocalypse") return 45000;
+  if (level === "eldritch") return 30000;
+  if (level === "abomination") return 22000;
+  return 16000;
 }
 
 function setBusy(busy) {
@@ -123,25 +155,45 @@ function updateStats(stats) {
 
 async function transform() {
   setBusy(true);
-  transformState.textContent = "parsing AST";
 
-  resetTransformWorker();
+  if (!transformWorker) {
+    createTransformWorker();
+  }
+
+  if (!transformWorkerReady) {
+    transformState.textContent = "warming engine";
+    await transformWorkerReadyPromise;
+  }
+
   const id = ++transformSequence;
   const worker = transformWorker;
+  const currentMode = mode;
+  const limit = timeoutForMode(currentMode);
 
-  const timeout = setTimeout(() => {
+  transformState.textContent = "parsing AST";
+
+  clearTimeout(transformTimeout);
+  transformTimeout = setTimeout(() => {
+    if (id !== transformSequence) return;
+
     worker.terminate();
-    if (id === transformSequence) {
-      setBusy(false);
-      transformState.textContent = "timed out";
-      writeConsole("error", "Transformation exceeded 12 seconds and was terminated.");
-    }
-  }, 12000);
+    transformWorker = null;
+    transformWorkerReady = false;
+    setBusy(false);
+    transformState.textContent = "timed out";
+    writeConsole(
+      "error",
+      `${currentMode} transformation exceeded ${Math.round(limit / 1000)}s and was terminated. The transformer will warm up again on the next run.`
+    );
+  }, limit);
 
-  worker.onmessage = (event) => {
-    if (event.data.id !== id) return;
+  const handleMessage = (event) => {
+    if (event.data?.type === "ready") return;
+    if (event.data?.id !== id) return;
 
-    clearTimeout(timeout);
+    worker.removeEventListener("message", handleMessage);
+    clearTimeout(transformTimeout);
+    transformTimeout = null;
     setBusy(false);
 
     if (!event.data.ok) {
@@ -156,10 +208,12 @@ async function transform() {
     transformState.textContent = "cursed";
   };
 
+  worker.addEventListener("message", handleMessage);
+
   worker.postMessage({
     id,
     source: input.value,
-    level: mode,
+    level: currentMode,
     seed: Number(seed.value) || 0
   });
 }
@@ -289,7 +343,12 @@ input.value = presets.unicode;
 updateInputMeta();
 renderSource("apocalypse");
 setMode("apocalypse");
-transform();
+
+transformState.textContent = "warming engine";
+createTransformWorker();
+transformWorkerReadyPromise.then(() => {
+  transform();
+});
 
 window.addEventListener("beforeunload", () => {
   transformWorker?.terminate();
