@@ -23,7 +23,8 @@ test("exports all canonical curse levels", () => {
     "cursed",
     "abomination",
     "eldritch",
-    "apocalypse"
+    "apocalypse",
+    "singularity"
   ]);
 });
 
@@ -243,4 +244,72 @@ test("apocalypse mode survives the full one-line pipeline", async () => {
   assert.ok(stats.apocalypseCrimes.characters > 0);
   assert.ok(stats.apocalypseCrimes.escapedCharacters > 0);
   assert.equal(code.includes("fromCodePoint"), false);
+});
+
+
+test("singularity is deterministic for an explicit salt", async () => {
+  const source = `
+    const value = "salted";
+    console.log(value, 42);
+  `;
+
+  const a = await curse(source, {
+    level: "singularity",
+    salt: "build-alpha",
+    seed: 7
+  });
+  const b = await curse(source, {
+    level: "singularity",
+    salt: "build-alpha",
+    seed: 7
+  });
+
+  assert.equal(a.code, b.code);
+  assert.equal(a.stats.singularityCrimes.saltFingerprint, b.stats.singularityCrimes.saltFingerprint);
+  assert.equal(execute(a.code).stdout, "salted 42\n");
+});
+
+test("singularity changes shape when the salt changes", async () => {
+  const source = `
+    function greet(name) {
+      console.log("hello", name);
+    }
+    greet("world");
+  `;
+
+  const a = await curse(source, {
+    level: "singularity",
+    salt: "salt-A",
+    seed: 0
+  });
+  const b = await curse(source, {
+    level: "singularity",
+    salt: "salt-B",
+    seed: 0
+  });
+
+  assert.notEqual(a.code, b.code);
+  assert.notEqual(
+    a.stats.singularityCrimes.saltFingerprint,
+    b.stats.singularityCrimes.saltFingerprint
+  );
+  assert.ok(a.stats.singularityCrimes.noiseExpressions > 0);
+  assert.ok(b.stats.singularityCrimes.noiseExpressions > 0);
+  assert.equal(execute(a.code).stdout, "hello world\n");
+  assert.equal(execute(b.code).stdout, "hello world\n");
+});
+
+test("singularity random salt does not embed the raw salt in stats", async () => {
+  const result = await curse(`console.log("x")`, {
+    level: "singularity",
+    salt: "this-is-a-secret-build-salt"
+  });
+
+  assert.equal(result.stats.level, "singularity");
+  assert.ok(result.stats.singularityCrimes);
+  assert.equal(
+    JSON.stringify(result.stats).includes("this-is-a-secret-build-salt"),
+    false
+  );
+  assert.equal(execute(result.code).stdout, "x\n");
 });
