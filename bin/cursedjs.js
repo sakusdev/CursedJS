@@ -15,11 +15,13 @@ Usage:
 
 Options:
   -o, --output <file>       Write output to a file (default: stdout)
-  -l, --level <level>       0 | 1 | 2 | 3 | 4 | cursed | abomination | eldritch | apocalypse
+  -l, --level <level>       0 | 1 | 2 | 3 | 4 | cursed | abomination | eldritch | apocalypse | singularity
       --brainfuck           Alias for --level abomination
       --abomination         Maximum classic AST damage
       --eldritch            JS coercion / character-mining mode
       --apocalypse          No String.fromCodePoint. Bootstrap escape/unescape from JS itself
+      --singularity         Salted non-deterministic maximum-regret mode
+      --salt <value>        Singularity salt; use random for a fresh build (default: random)
       --seed <number>       Deterministic obfuscator seed (default: 0)
       --stats               Print size/readability damage report to stderr
       --verify              Execute original + cursed code and compare results
@@ -30,6 +32,7 @@ Examples:
   cursedjs app.js --brainfuck --verify -o regret.js
   cursedjs app.js --eldritch --stats -o forbidden.js
   cursedjs app.js --apocalypse --stats --verify -o aftermath.js
+  cursedjs app.js --singularity --salt random --stats -o event-horizon.js
   cat app.js | cursedjs - --level 3
 `.trim();
 }
@@ -40,6 +43,7 @@ function parseArgs(argv) {
     output: null,
     level: "cursed",
     seed: 0,
+    salt: "random",
     stats: false,
     verify: false,
     help: false
@@ -65,6 +69,12 @@ function parseArgs(argv) {
       out.level = "eldritch";
     } else if (arg === "--apocalypse") {
       out.level = "apocalypse";
+    } else if (arg === "--singularity") {
+      out.level = "singularity";
+    } else if (arg === "--salt") {
+      const raw = argv[++i];
+      if (raw === undefined) throw new Error("--salt requires a value");
+      out.salt = raw;
     } else if (arg === "--seed") {
       const raw = argv[++i];
       if (raw === undefined || !Number.isFinite(Number(raw))) {
@@ -144,6 +154,7 @@ async function verifyEquivalent(original, cursed, inputPath) {
 }
 
 function readability(level) {
+  if (level === "singularity") return "event horizon crossed";
   if (level === "apocalypse") return "civilization ended";
   if (level === "eldritch") return "language privileges revoked";
   if (level === "abomination") return "beyond recovery";
@@ -178,6 +189,16 @@ function printStats(stats) {
     );
     console.error(
       `  fallbacks    ${stats.eldritchCrimes.codePointFallbacks} String.fromCodePoint calls`
+    );
+  }
+
+  if (stats.singularityCrimes) {
+    console.error(
+      `  salt fp      ${stats.singularityCrimes.saltFingerprint} (salt not embedded)`
+    );
+    console.error(
+      `  salted noise ${stats.singularityCrimes.noiseExpressions} expressions / ` +
+      `${stats.singularityCrimes.touchedBlocks} blocks`
     );
   }
 
@@ -229,7 +250,8 @@ async function main() {
 
   const result = await curse(source, {
     level: args.level,
-    seed: args.seed
+    seed: args.seed,
+    salt: args.salt
   });
 
   if (args.verify) {
