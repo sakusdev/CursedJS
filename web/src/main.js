@@ -90,8 +90,7 @@ function createTransformWorker() {
   });
 
   transformWorker = new Worker(
-    new URL("./transform-worker.js", import.meta.url),
-    { type: "module" }
+    new URL("./transform-worker.js", import.meta.url)
   );
 
   transformWorker.addEventListener("message", (event) => {
@@ -105,9 +104,24 @@ function createTransformWorker() {
     }
   });
 
+  transformWorker.addEventListener("message", (event) => {
+    if (event.data?.type === "init-error") {
+      transformWorkerReady = false;
+      writeConsole("error", event.data.error || "Transformer initialization failed.");
+    }
+  });
+
   transformWorker.addEventListener("error", (event) => {
     transformWorkerReady = false;
     writeConsole("error", event.message || "Transformer worker failed to load.");
+  });
+
+  transformWorker.postMessage({
+    type: "init",
+    obfuscatorUrl: new URL(
+      "vendor/javascript-obfuscator.js",
+      document.baseURI
+    ).href
   });
 }
 
