@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { curse, levels } from "../src/index.js";
 import { commitAstCrimes } from "../src/ast-crimes.js";
+import { commitEldritchCrimes, eldritchAlphabet } from "../src/eldritch.js";
 
 function execute(code) {
   return spawnSync(process.execPath, ["-e", code], {
@@ -12,7 +13,16 @@ function execute(code) {
 }
 
 test("exports all canonical curse levels", () => {
-  assert.deepEqual(levels, ["0", "1", "2", "3", "4", "cursed", "abomination"]);
+  assert.deepEqual(levels, [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "cursed",
+    "abomination",
+    "eldritch"
+  ]);
 });
 
 test("level 0 collapses JavaScript to one line", async () => {
@@ -101,4 +111,61 @@ test("brainfuck is an alias for abomination", async () => {
   assert.equal(result.stats.level, "abomination");
   assert.equal(result.stats.requestedLevel, "brainfuck");
   assert.equal(execute(result.code).stdout, "42\n");
+});
+
+test("eldritch alphabet is mined from JavaScript coercion strings", () => {
+  const alphabet = eldritchAlphabet();
+
+  for (const char of ["f", "a", "l", "s", "e", "t", "r", "u", "n", "d", "i"]) {
+    assert.ok(alphabet.includes(char));
+  }
+
+  assert.ok(alphabet.includes(" "));
+  assert.ok(alphabet.includes("O"));
+});
+
+test("eldritch encoder preserves mined and fallback characters", () => {
+  const source = `
+    console.log("false true undefined NaN object");
+    console.log("Hello, 世界 🌎");
+    console.log("");
+  `;
+
+  const transformed = commitEldritchCrimes(source);
+  const before = execute(source);
+  const after = execute(transformed.code);
+
+  assert.equal(after.status, 0);
+  assert.equal(after.stdout, before.stdout);
+  assert.ok(transformed.stats.minedCharacters > 0);
+  assert.ok(transformed.stats.codePointFallbacks > 0);
+  assert.ok(transformed.stats.emptyStrings > 0);
+  assert.equal(transformed.code.includes('"false true undefined NaN object"'), false);
+});
+
+test("eldritch mode is executable, one-line, and visibly coercion-heavy", async () => {
+  const source = `
+    const answer = 42;
+    const data = { value: "hello" };
+    console.log(data.value, answer, true, "世界");
+  `;
+
+  const { code, stats } = await curse(source, {
+    level: "eldritch",
+    seed: 9001
+  });
+  const result = execute(code);
+
+  assert.equal(code.includes("\n"), false);
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout, "hello 42 true 世界\n");
+  assert.equal(stats.level, "eldritch");
+  assert.ok(stats.astCrimes);
+  assert.ok(stats.eldritchCrimes);
+  assert.ok(stats.eldritchCrimes.characters > 0);
+  assert.ok(
+    code.includes("![]") ||
+    code.includes("!![]") ||
+    code.includes("fromCodePoint")
+  );
 });
