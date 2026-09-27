@@ -1,7 +1,14 @@
 import JavaScriptObfuscator from "javascript-obfuscator";
 import { minify } from "terser";
+import { commitAstCrimes } from "./ast-crimes.js";
 
-const VALID_LEVELS = new Set(["0", "1", "2", "3", "4", "cursed"]);
+const CANONICAL_LEVELS = ["0", "1", "2", "3", "4", "cursed", "abomination"];
+const VALID_LEVELS = new Set([...CANONICAL_LEVELS, "brainfuck"]);
+
+function normalizeLevel(level) {
+  const normalized = String(level ?? "cursed").toLowerCase();
+  return normalized === "brainfuck" ? "abomination" : normalized;
+}
 
 function looksLikeModule(source) {
   return /(^|\n)\s*(import\s|export\s)/m.test(source);
@@ -61,6 +68,33 @@ function obfuscatorOptions(level, seed) {
     };
   }
 
+  if (level === "abomination") {
+    return {
+      ...base,
+      controlFlowFlattening: true,
+      controlFlowFlatteningThreshold: 1,
+      deadCodeInjection: true,
+      deadCodeInjectionThreshold: 0.35,
+      numbersToExpressions: true,
+      splitStrings: true,
+      splitStringsChunkLength: 2,
+      stringArray: true,
+      stringArrayCallsTransform: true,
+      stringArrayCallsTransformThreshold: 1,
+      stringArrayEncoding: ["rc4"],
+      stringArrayIndexShift: true,
+      stringArrayRotate: true,
+      stringArrayShuffle: true,
+      stringArrayThreshold: 1,
+      stringArrayWrappersCount: 5,
+      stringArrayWrappersChainedCalls: true,
+      stringArrayWrappersParametersMaxCount: 5,
+      stringArrayWrappersType: "function",
+      transformObjectKeys: true,
+      unicodeEscapeSequence: true
+    };
+  }
+
   return {
     ...base,
     controlFlowFlattening: true,
@@ -111,24 +145,33 @@ export async function curse(source, options = {}) {
     throw new TypeError("source must be a string");
   }
 
-  const level = String(options.level ?? "cursed").toLowerCase();
-  const seed = Number.isFinite(Number(options.seed)) ? Number(options.seed) : 0;
-
-  if (!VALID_LEVELS.has(level)) {
+  const requestedLevel = String(options.level ?? "cursed").toLowerCase();
+  if (!VALID_LEVELS.has(requestedLevel)) {
     throw new RangeError(
-      `Unknown level "${level}". Expected one of: 0, 1, 2, 3, 4, cursed.`
+      `Unknown level "${requestedLevel}". Expected one of: 0, 1, 2, 3, 4, cursed, abomination (brainfuck alias).`
     );
   }
 
+  const level = normalizeLevel(requestedLevel);
+  const seed = Number.isFinite(Number(options.seed)) ? Number(options.seed) : 0;
   let code;
+  let astCrimes = null;
 
   if (level === "0") {
     code = await oneLine(source);
   } else if (level === "1") {
     code = await oneLine(source, { compress: true, mangle: true });
   } else {
+    let sacrificialSource = source;
+
+    if (level === "abomination") {
+      const committed = commitAstCrimes(source);
+      sacrificialSource = committed.code;
+      astCrimes = committed.stats;
+    }
+
     code = JavaScriptObfuscator
-      .obfuscate(source, obfuscatorOptions(level, seed))
+      .obfuscate(sacrificialSource, obfuscatorOptions(level, seed))
       .getObfuscatedCode();
 
     // Obfuscation is already compact. This final pass exists for one sacred rule:
@@ -136,17 +179,25 @@ export async function curse(source, options = {}) {
     code = await oneLine(code);
   }
 
+  const inputBytes = Buffer.byteLength(source);
+  const outputBytes = Buffer.byteLength(code);
+
   return {
     code,
     stats: {
       level,
-      inputBytes: Buffer.byteLength(source),
-      outputBytes: Buffer.byteLength(code),
-      ratio: source.length === 0 ? 0 : code.length / source.length,
+      requestedLevel,
+      inputBytes,
+      outputBytes,
+      ratio: inputBytes === 0 ? 0 : outputBytes / inputBytes,
       inputLines: source === "" ? 0 : source.split(/\r?\n/).length,
-      outputLines: code === "" ? 0 : 1
+      outputLines: code === "" ? 0 : 1,
+      astCrimes
     }
   };
 }
 
-export const levels = Object.freeze(["0", "1", "2", "3", "4", "cursed"]);
+export const levels = Object.freeze([...CANONICAL_LEVELS]);
+export const aliases = Object.freeze({
+  brainfuck: "abomination"
+});
